@@ -1,0 +1,254 @@
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="container">
+      <h1>🏨 Hotel Room Reservation System</h1>
+      <p class="subtitle">97 Rooms | 10 Floors | Smart Booking Algorithm</p>
+    </div>
+  </header>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+
+  <!-- Alert Messages -->
+  <div class="container">
+    <div class="alert alert-success" *ngIf="successMessage">
+      <span class="alert-icon">✓</span>
+      {{ successMessage }}
+    </div>
+    <div class="alert alert-error" *ngIf="error">
+      <span class="alert-icon">✕</span>
+      {{ error }}
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Control Panel -->
+    <section class="control-panel">
+      <div class="card">
+        <h2>Booking Control Panel</h2>
+        
+        <div class="booking-form">
+          <div class="form-group">
+            <label for="numberOfRooms">Number of Rooms (1-5):</label>
+            <input 
+              type="number" 
+              id="numberOfRooms" 
+              [(ngModel)]="numberOfRooms" 
+              min="1" 
+              max="5"
+              [disabled]="loading"
+              class="form-control">
+          </div>
+          
+          <button 
+            class="btn btn-primary" style="margin-left: 20px;"
+            (click)="createBooking()"
+            [disabled]="loading || numberOfRooms < 1 || numberOfRooms > 5">
+            <span class="btn-icon">📋</span>
+            Book Rooms
+          </button>
+        </div>
+
+        <div class="action-buttons">
+          <button 
+            class="btn btn-secondary" 
+            (click)="generateRandomOccupancy()"
+            [disabled]="loading">
+            <span class="btn-icon">🎲</span>
+            Generate Random Occupancy
+          </button>
+          
+          <button 
+            class="btn btn-danger" 
+            (click)="resetBookings()"
+            [disabled]="loading">
+            <span class="btn-icon">🔄</span>
+            Reset All Bookings
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Statistics Dashboard -->
+    <section class="stats-dashboard" *ngIf="occupancySummary">
+      <div class="card">
+        <h2>Occupancy Statistics</h2>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value">{{ occupancySummary.overall.totalRooms }}</div>
+            <div class="stat-label">Total Rooms</div>
+          </div>
+          <div class="stat-card booked">
+            <div class="stat-value">{{ occupancySummary.overall.bookedRooms }}</div>
+            <div class="stat-label">Booked</div>
+          </div>
+          <div class="stat-card available">
+            <div class="stat-value">{{ occupancySummary.overall.availableRooms }}</div>
+            <div class="stat-label">Available</div>
+          </div>
+          <div class="stat-card occupancy">
+            <div class="stat-value">{{ occupancySummary.overall.occupancyRate }}%</div>
+            <div class="stat-label">Occupancy Rate</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hotel Visualization -->
+    <section class="hotel-visualization">
+      <div class="card">
+        <h2>Hotel Layout Visualization</h2>
+        
+        <div class="floors-container">
+          <div class="floor" *ngFor="let floor of [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]">
+            <div class="floor-label">
+              <span class="floor-number">Floor {{ floor }}</span>
+              <span class="floor-info">
+                {{ getFreeRoomsByFloor(floor).length }} free/
+                {{ getRoomsByFloor(floor).length }} available
+              </span>
+            </div>
+            
+            <div class="rooms-row">
+              <div class="staircase">
+                <span>🚶</span>
+                <span>🛗</span>
+              </div>
+              
+              <div class="room" 
+                   *ngFor="let room of getRoomsByFloor(floor)"
+                   [class.booked]="room.isBooked"
+                   [class.available]="!room.isBooked"
+                   [title]="room.roomNumber + ' - ' + (room.isBooked ? 'Booked' : 'Available')">
+                <span class="room-number">{{ room.roomNumber }}</span>
+                <span class="room-icon" *ngIf="room.isBooked">🔒</span>
+                <span class="room-icon" *ngIf="!room.isBooked">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-box available"></span>
+            <span>Available</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box booked"></span>
+            <span>Booked</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Bookings -->
+    <section class="recent-bookings">
+      <div class="card">
+        <h2>Recent Bookings</h2>
+        
+        <div class="bookings-table" *ngIf="bookings.length > 0; else noBookings">
+          <table>
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Rooms</th>
+                <th>Room Numbers</th>
+                <th>Travel Time</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let booking of bookings.slice(0, 10)">
+                <td><code>{{ booking.bookingReference }}</code></td>
+                <td>{{ booking.numberOfRooms }}</td>
+                <td>{{ booking.roomNumbers.join(', ') }}</td>
+                <td>{{ booking.totalTravelTime }} min</td>
+                <td>
+                  <span class="status-badge" [class]="booking.status">
+                    {{ booking.status }}
+                  </span>
+                </td>
+                <td>{{ booking.createdAt | date:'short' }}</td>
+                <td>
+                  <button 
+                    class="btn btn-sm btn-info" 
+                    (click)="viewBookingDetails(booking)">
+                    View
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ng-template #noBookings>
+          <div class="empty-state">
+            <p>No bookings yet. Create your first booking!</p>
+          </div>
+        </ng-template>
+      </div>
+    </section>
+  </main>
+
+  <!-- Booking Details Modal -->
+  <div class="modal-overlay" *ngIf="showBookingDetails" (click)="closeBookingDetails()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Booking Details</h3>
+        <button class="close-btn" (click)="closeBookingDetails()">×</button>
+      </div>
+      
+      <div class="modal-body" *ngIf="selectedBooking">
+        <div class="detail-row">
+          <span class="detail-label">Reference:</span>
+          <span class="detail-value"><code>{{ selectedBooking.bookingReference }}</code></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Number of Rooms:</span>
+          <span class="detail-value">{{ selectedBooking.numberOfRooms }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Room Numbers:</span>
+          <span class="detail-value">{{ selectedBooking.roomNumbers.join(', ') }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Floors:</span>
+          <span class="detail-value">{{ selectedBooking.floors.join(', ') }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Total Travel Time:</span>
+          <span class="detail-value">{{ selectedBooking.totalTravelTime }} minutes</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Booking Strategy:</span>
+          <span class="detail-value">{{ selectedBooking.metadata?.bookingStrategy }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Status:</span>
+          <span class="status-badge" [class]="selectedBooking.status">
+            {{ selectedBooking.status }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Created At:</span>
+          <span class="detail-value">{{ selectedBooking.createdAt | date:'medium' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="container">
+      <p>&copy; 2025 Hotel Booking System | Built with Angular 15 & Node.js</p>
+    </div>
+  </footer>
+</div>
